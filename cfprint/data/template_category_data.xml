@@ -1,5 +1,5 @@
 <openerp>
-    <data noupdate="1">
+    <data>
 
         <record id="cf_templ_category_common" model="cf.template.category">
             <field name="name">未分类</field>

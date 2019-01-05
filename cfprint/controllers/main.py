@@ -11,16 +11,13 @@ import logging
 import base64
 from odoo import http, _
 from odoo.http import request
-# from cStringIO import StringIO
-from io import StringIO
+from cStringIO import StringIO
 from werkzeug.utils import redirect
 
 _logger = logging.getLogger(__name__)
 
 class CFPrintController(http.Controller):
-    """
-    康虎云报表模板Controller类
-    """
+
     @http.route('/cfprint/template', type='http', auth='public')  #auth='user'
     def get_cfprint_template(self, templ_id):
         """

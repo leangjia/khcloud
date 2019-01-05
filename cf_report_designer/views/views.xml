@@ -53,7 +53,7 @@
             </group>
             <notebook>
               <page name="fields" string="字段">
-                <field name="field_ids" context="{'default_report_id': id, 'default_model_id': model_id}"  domain="[('model_id', '=', model_id)]"/>
+                <field name="field_ids" context="{ 'default_report_id': id, 'default_model_id': model_id}" />
               </page>
             </notebook>
           </sheet>
@@ -141,19 +141,19 @@
 
     <!-- actions opening views on models -->
     <record id="act_cf_report_define_win" model="ir.actions.act_window">
-      <field name="name">康虎云报表定义</field>
+      <field name="name">CF Report Define Window</field>
       <field name="res_model">cf.report.define</field>
       <field name="view_mode">tree,form</field>
     </record>
 
     <record id="act_cf_cfprint_license_win" model="ir.actions.act_window">
-      <field name="name">康虎云报表授权许可</field>
+      <field name="name">CFPrint License Window</field>
       <field name="res_model">cf.cfprint.license</field>
       <field name="view_mode">form</field>
     </record>
 
     <menuitem id="menu_cf_report_define" name="Report Define" parent="cfprint.menu_cf_root" action="act_cf_report_define_win" sequence="5" groups="cfprint.cfprint_group_manager"/>
-    <menuitem id="menu_cf_cfprint_license" name="License" parent="cfprint.menu_cf_root" action="act_cf_cfprint_license_win" sequence="10" groups="cfprint.cfprint_group_manager"/>
+    <menuitem id="menu_cf_cfprint_license" name="License" parent="cfprint.menu_cf_root" action="act_cf_cfprint_license_win" sequence="50" groups="cfprint.cfprint_group_manager"/>
 
   </data>
 </odoo>

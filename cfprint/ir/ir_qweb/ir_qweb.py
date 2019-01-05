@@ -1,18 +1,30 @@
 # -*- coding: utf-8 -*-
-from __future__ import print_function
 import ast
+from urlparse import urlparse
+from lxml import html
 
-import re
-import logging
-import json
-from lxml import etree, html
-from werkzeug.utils import escape as _escape
+#from .qweb import QWeb, Contextifier
+#from .assetsbundle import AssetsBundle
+from odoo.addons.base.ir.ir_qweb.qweb import QWeb, Contextifier, frozendict, QWebException
+from odoo.addons.base.ir.ir_qweb.assetsbundle import AssetsBundle
 
-from odoo.tools import pycompat, freehash
+from lxml import etree
+from collections import OrderedDict
 
 from odoo import api, models, tools
+from odoo.tools.safe_eval import assert_valid_codeobj, _BUILTINS, _SAFE_OPCODES
+from odoo.http import request
+from odoo.modules.module import get_resource_path
+import json
+from time import time
 
+import re
+
+import logging
 _logger = logging.getLogger(__name__)
+
+unsafe_eval = eval
+
 
 """
 HTML处理工具类
@@ -47,6 +59,11 @@ class HTMLHelper:
         s = re_br.sub('\n', s)  # 将br转换为换行
         s = re_h.sub('', s)  # 去掉HTML 标签
         s = re_comment.sub('', s)  # 去掉HTML注释
+        # 去掉多余的空行
+        ##blank_line = re.compile('\n+')
+        # blank_line = re.compile('[ \n]+')
+        # s = blank_line.sub('\n', s)
+        # s = re.sub('[ \n]+', '', s)
         s = s.strip();
         s = HTMLHelper.replaceCharEntity(s)  # 替换实体
         return s
@@ -114,93 +131,178 @@ class HTMLHelper:
         :param html:
         :return:
         """
-        TAG_RE = re.compile(r'(<[^>]+>)|[\r\n]')
-        return TAG_RE.sub('', html).strip()
+        return re.sub(r'</?\w+[^>]*>', '', html)
 
-class CFIrQWeb(models.AbstractModel):
-    """ 继承IrQWeb对象，以实现删除字段值中的HTML标签和前后空格
+class IrQWebCF(models.AbstractModel, QWeb):
     """
+    继承ir.qweb类，实现自定义属性的渲染输出
+    """
+    _name = 'ir.qweb'
     _inherit = 'ir.qweb'
 
     def _get_field(self, record, field_name, expression, tagName, field_options, options, values):
         """
-        判断是否指定了data_type=raw，如果已经指定则移除字段值中的HTML标签、换行和前后空格
+        获取Field值
+        :param record:
+        :param field_name:
+        :param expression:
+        :param tagName:
+        :param field_options:
+        :param options:
+        :param values:
+        :return:
         """
-        data = super(CFIrQWeb, self)._get_field(record, field_name, expression, tagName, field_options, options, values)
+        field = record._fields[field_name]
 
-        attributes = data[0]
-        content = data[1]
+        field_options['tagName'] = tagName
+        field_options['expression'] = expression
+        field_options['type'] = field_options.get('widget', field.type)
+        inherit_branding = options.get('inherit_branding',
+                                       options.get('inherit_branding_auto') and record.check_access_rights('write', False))
+        field_options['inherit_branding'] = inherit_branding
+        translate = options.get('edit_translations') and options.get('translatable') and field.translate
+        field_options['translate'] = translate
 
-        # if field_options.has_key("data_type"):
-        if "data_type" in field_options:
-            if type(field_options['data_type']) in (str, unicode) and field_options['data_type'].lower() == 'raw':
-                content = HTMLHelper.filter_tags_re(content)
+        # field converter
+        model = 'ir.qweb.field.' + field_options['type']
+        converter = self.env[model] if model in self.env else self.env['ir.qweb.field']
 
-        return (attributes, content, data[2])
+        # get content
+        content = converter.record_to_html(record, field_name, field_options)
+        attributes = converter.attributes(record, field_name, field_options, values)
+        #TODO：可以在此把HTML标签去掉
+        data_type = field_options.get('data_type')
+        if data_type:
+            if data_type == "raw" or data_type == "json":
+                content = HTMLHelper.filter_tags_re(content)    #对于数据类型指定为raw或json，则去掉html标签
 
-    def __is_show_html(self, el, options):
+        return (attributes, content, inherit_branding or translate)
+
+    @api.model
+    def render(self, id_or_xml_id, values=None, **options):
         """
-        根据data_type判断是否要显示HTML
+        render(id_or_xml_id, values, **options)
+
+        解析并渲染页面模板.
+
+        :param id_or_xml_id: name or etree (see get_template)
+        :param dict values: template values to be used for rendering
+        :param options: used to compile the template (the dict available for the rendering is frozen)
+            * ``load`` (function) overrides the load method
+            * ``profile`` (float) profile the rendering (use astor lib) (filter
+              profile line with time ms >= profile)
         """
-        show_tag = True  # 是否显示HTML标签
-        data_type = None
-        # if el.nsmap and el.nsmap.has_key('data_type'):
-        if el.nsmap and "data_type" in el.nsmap:
-            data_type = el.nsmap['data_type'].lower()
-        # if not data_type and options.has_key('data_type'):
-        if not data_type and "data_type" in options:
-            data_type = options['data_type'].lower()
+        for method in dir(self):
+            if method.startswith('render_'):
+                _logger.warning("Unused method '%s' is found in ir.qweb." % method)
 
-        if data_type == "raw" or data_type == "json":
-            show_tag = False  # 如果指定数据类型是raw或json，则不显示HTML标签
+        context = dict(self.env.context, dev_mode='qweb' in tools.config['dev_mode'])
+        context.update(options)
 
-        return show_tag
+        #根据t-field-options指定的数据类型，生成对应格式的数据
+        if values and values.get("options"):
+            data_type = values.get("options").get('data_type')
+            if data_type == "raw":
+                vals = []
+                fields = values.get("fields")
+                for field in fields:
+                    if values.get(field):
+                        vals.append( values.get(field) )
+                return ",".join(vals)
+            elif data_type == "json":
+                val = {}
+                fields = values.get("fields")
+                for field in fields:
+                    val[field] = values.get(field)
+                return json.dumps(val)
+            else:
+                return super(IrQWebCF, self).render(id_or_xml_id, values=values, **context)
+        else:
+            return super(IrQWebCF, self).render(id_or_xml_id, values=values, **context)
+
+    def _compile_directive_field(self, el, options):
+        '''
+        取出t-field-options，并传递到HTML渲染界面
+        :param el:          HTML元素
+        :param options:     HTML渲染参数
+        :return:
+        '''
+        field_options_str = el.attrib.get("t-field-options");
+        if field_options_str:
+            #解析字段属性串
+            json_acceptable_string = field_options_str.replace("'", "\"")
+            field_options = json.loads(json_acceptable_string)
+
+            #判断字段属性中是否有指定数据类型，如果有指定，则把数据类型传到下一步处理
+            data_type = field_options.get("data_type")
+            if data_type:
+                options["data_type"] = data_type
+
+        return super(IrQWebCF, self)._compile_directive_field(el, options)
 
     def _compile_tag(self, el, content, options, attr_already_created=False):
         """
-        继承base/ir/ir_qweb/qweb.py中_compile_tag方法，根据条件判断是否要移除HTML
+        把HTML元素插入AST 节点中。
+        增强：如果渲染参数中指定了数据类型，并且数据类型为raw、json等值，则输出时不带HTML标签
+        :param el:          HTML元素
+        :param content:     HTML内容
+        :param options:     渲染参数
+        :param attr_already_created:
+        :return:
         """
 
-        if not self.__is_show_html(el, options):
-            body = []
-            body.extend(content)
-            return body
+        if el.tag == 't':
+            return content
+
+        # body = [self._append(ast.Str(u'<%s' % el.tag))]
+        # body.extend(self._compile_all_attributes(el, options, attr_already_created))
+        # if el.tag in self._void_elements:
+        #     body.append(self._append(ast.Str(u'/>')))
+        #     body.extend(content)
+        # else:
+        #     body.append(self._append(ast.Str(u'>')))
+        #     body.extend(content)
+        #     body.append(self._append(ast.Str(u'</%s>' % el.tag)))
+
+        #判断是否指定数据类型，如果指定并且是特定几种不需要输出HTML标签的，则直接输出内容
+        data_type = options.get("data_type")
+        is_show_tag = True      #是否显示HTML标签
+        if data_type:
+            if data_type == "raw" or data_type == "json":
+                is_show_tag = False         #如果指定数据类型是raw或json，则不显示HTML标签
+
+        body = [];
+        if is_show_tag:     #如果是需要显示HTML标签，则按正常输出
+            body.append(self._append(ast.Str(u'<%s' % el.tag)))
+            body.extend(self._compile_all_attributes(el, options, attr_already_created))
+            if el.tag in self._void_elements:
+                body.append(self._append(ast.Str(u'/>')))
+                body.extend(content)
+            else:
+                body.append(self._append(ast.Str(u'>')))
+                body.extend(content)
+                body.append(self._append(ast.Str(u'</%s>' % el.tag)))
         else:
-            body = super(CFIrQWeb, self)._compile_tag(el, content, options, attr_already_created)
-            return body
+            content = HTMLHelper.filter_tags_re(content)
+            body.extend(content)        #如果不需要显示HTML，则只输出内容
 
-    # for backward compatibility to remove after v10
-    def _get_widget_options(self, el, directive_type):
-        """
-        仿照 base/ir/ir_qweb/ir_qweb.py中_compile_widget_options方法，
-        从el.attrib中获取“t-options”和“t-widget名称-options”的值，但不从el.attrib移除，
-        以便于odoo其他代码还能正常执行。
-        """
-        # 依照base/ir/ir_qweb/qweb.py中的_compile_widget_options方法从el.attrib取t-options值，取出但不移除
-        field_options = None
-        if hasattr(el.attrib, 't-options'):
-            field_options = el.attrib['t-options']
+        return body
 
-        # 仿照 base/ir/ir_qweb/ir_qweb.py中_compile_widget_options方法从从el.attrib中取“t-widget名称-options”值,
-        # 取出但不移除
-        if ('t-%s-options' % directive_type) in el.attrib:
-            if tools.config['dev_mode']:
-                _logger.warning("Use new syntax t-options instead of t-%s-options" % directive_type)
-            if not field_options:
-                field_options = el.attrib['t-%s-options' % directive_type]
+############## Extende from qweb.py
 
-        return field_options
-    # end backward
+    # def render(self, template, values=None, **options):
+    #     """ render(template, values, **options)
+    #
+    #     Render the template specified by the given name.
+    #
+    #     :param template: template identifier
+    #     :param dict values: template values to be used for rendering
+    #     :param options: used to compile the template (the dict available for the rendering is frozen)
+    #         * ``load`` (function) overrides the load method
+    #         * ``profile`` (float) profile the rendering (use astor lib) (filter
+    #           profile line with time ms >= profile)
+    #     """
+    #     body = []
+    #     self.compile(template, options)(self, body.append, values or {})
+    #     return u''.join(body).encode('utf8')
 
-
-    def _compile_directive_field(self, el, options):
-        """
-        继承base/ir/ir_qweb/qweb/py中_compile_directive_field方法，用以获取t-options或t-field-options属性，
-        并塞进options以便于_compile_tag中根据这些属性进行相应处理（典型的就是输出不带HTML的内容）
-        """
-        field_options = self._get_widget_options(el, 'field')
-        if field_options:
-            for k, v in json.loads(field_options).items():
-                options[k] = v
-
-        return super(CFIrQWeb, self)._compile_directive_field(el, options)

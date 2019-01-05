@@ -22,24 +22,23 @@
     """,
 
     'author': "康虎软件工作室（QQ：360026606， 微信：360026606）",
-    'website': "http://www.cfsoft.cf",
+    'website': "http://www.khcloud.net",
 
     # Categories can be used to filter modules in modules listing
     # Check https://github.com/odoo/odoo/blob/master/odoo/addons/base/module/module_data.xml
     # for the full list
     'category': 'CFSoft',
-    'version': '12.0.5.0',
+    'version': '10.0.5.0',
 
     # any module necessary for this one to work correctly
-    'depends': ['base'],
+    'depends': ['base','report'],
 
     # always loaded
     'data': [
         'security/ir.model.access.csv',
         'security/security.xml',
+        'data/template_category_data.xml',
         'report/layout_templates.xml',
         'views/cf_template_view.xml',
-
-        'data/template_category_data.xml',
     ],
 }

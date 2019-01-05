@@ -1,1 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>b'<odoo>\n    <data>\n        <template id="rpt_sale_order">\n    <t t-call="report.html_container">\n        <t t-raw="show_message" />  \n    </t>\n<script type="text/javascript">\n<t t-raw="cfprint_json" />\n</script></template></data>\n</odoo>'
+<odoo>
+    <data>
+        <template id="rpt_sale_order">
+    <t t-call="report.html_container">
+        <t t-raw="show_message" />  
+    </t>
+<script type="text/javascript">
+<t t-raw="cfprint_json" />
+</script></template></data>
+</odoo>

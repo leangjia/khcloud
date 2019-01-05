@@ -37,7 +37,7 @@
     # Check https://github.com/odoo/odoo/blob/master/odoo/addons/base/module/module_data.xml
     # for the full list
     'category': 'cfsoft',
-    'version': '12.0.0.1',
+    'version': '10.0.1.0',
     'license': 'Other proprietary',
 
     # any module necessary for this one to work correctly
@@ -46,10 +46,13 @@
     # always loaded
     'data': [
         'security/ir.model.access.csv',
+        # 'security/security.xml',
         'views/views.xml',
         'views/templates.xml',
 
-        "data/cfprint_templates.xml",
+        # "report/cfprint_report_views.xml",
+        # "report/cfprint_report_templates.xml",
+        'data/data.xml',
     ],
     'installable': True,
     'auto_install': False,

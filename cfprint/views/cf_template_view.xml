@@ -16,14 +16,14 @@
         </record>
 
         <record id="cf_template_category_form" model="ir.ui.view">
-            <field name="name">cf.template.category.form</field>
+            <field name="name">cf.template.form</field>
             <field name="model">cf.template.category</field>
             <field name="type">form</field>
             <field name="arch" type="xml">
                 <form string="Manage CFPrint Template Category">
                     <sheet>
                         <group>
-                            <field name="name" placeholder="输入分类名称"/>
+                            <field name="name"/>
                             <field name="create_date"/>
                             <field name="write_date"/>
                         </group>
@@ -37,25 +37,49 @@
                                         <field name="template"/>
                                         <field name="write_date"/>
                                     </tree>
-                                    <form string="Detail of template">
-                                        <group>
-                                            <group>
-                                                <field name="templ_id"/>
-                                                <field name="name"/>
-                                                <field name="category_id"/>
-                                                <field name="description"/>
-                                                <field name="template_filename" invisible="1"/>
-                                                <field name="template" filename="template_filename"/>
-                                            </group>
-                                            <group>
-                                                <field name="preview_img" widget='image'/>
-                                            </group>
-                                        </group>
-                                    </form>
                                 </field>
                             </page>
                         </notebook>
                     </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="cf_template_view" model="ir.ui.view">
+            <field name="name">cf.template.form</field>
+            <field name="model">cf.template</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Manage CFPrint Template">
+                    <group>
+                        <group>
+                            <field name="templ_id"/>
+                            <field name="name"/>
+                            <field name="category_id"/>
+                            <field name="description"/>
+                            <field name="template_filename" invisible="1"/>
+                            <field name="template" filename="template_filename"/>
+                        </group>
+                        <group>
+                            <field name="preview_img" widget='image'/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Version History">
+                            <field name="templ_histories">
+                                <tree string="Version History">
+                                    <field name="category_id"/>
+                                    <field name="templ_id"/>
+                                    <field name="name"/>
+                                    <field name="description"/>
+                                    <field name="template"/>
+                                    <field name="version"/>
+                                    <field name="preview_img" widget='image'/>
+                                    <field name="write_date"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
                 </form>
             </field>
         </record>
@@ -70,74 +94,24 @@
                     <field name="name"/>
                     <field name="category_id"/>
                     <field name="description"/>
-                    <field name="template" invisible="1"/>
-                    <field name="preview_img" widget='image' invisible="1"/>
+                    <field name="template"/>
+                    <field name="preview_img" widget='image'/>
                     <field name="write_date"/>
                 </tree>
             </field>
         </record>
 
-        <record id="cf_template_form" model="ir.ui.view">
-            <field name="name">cf.template.form</field>
-            <field name="model">cf.template</field>
-            <field name="type">form</field>
-            <field name="arch" type="xml">
-                <form string="Manage CFPrint Template">
-                    <sheet>
-                        <group>
-                            <group>
-                                <field name="templ_id" placeholder="模板唯一标识，不允许中文和特殊字符"/>
-                                <field name="name" placeholder="模板中文名称"/>
-                                <field name="category_id" placeholder="选择模板分类"/>
-                                <field name="description" placeholder="请输入模板详细说明"/>
-                                <field name="template_filename" invisible="1"/>
-                                <field name="template" filename="template_filename"/>
-                            </group>
-                            <group>
-                                <div style="text-align: center; width:100%;">
-                                    <field name="preview_img" nolabel="1" widget="image" img_width="350" img_height="300" height="300"/>
-                                </div>
-                            </group>
-                        </group>
-                        <notebook>
-                            <page string="Version History">
-                                <field name="templ_histories">
-                                    <tree string="Version History" create="0" delete="0" edit="0">
-                                        <field name="category_id"/>
-                                        <field name="templ_id"/>
-                                        <field name="name"/>
-                                        <field name="description"/>
-                                        <field name="template" invisible="1"/>
-                                        <field name="ver"/>
-                                        <field name="write_date"/>
-                                        <!--<field name="preview_img" widget='image' invisible="1"/>-->
-                                    </tree>
-                                    <form string="Detail of template">
-                                        <group>
-                                            <group>
-                                                <field name="templ_id"/>
-                                                <field name="name"/>
-                                                <field name="category_id"/>
-                                                <field name="description"/>
-                                                <field name="ver"/>
-                                                <field name="template_filename" invisible="1"/>
-                                                <field name="template" filename="template_filename"/>
-                                                <field name="write_date"/>
-                                            </group>
-                                            <group>
-                                                <div style="text-align: center; width:100%;">
-                                                    <field name="preview_img" nolabel="1" widget="image" img_width="350" img_height="300" height="300"/>
-                                                </div>
-                                            </group>
-                                        </group>
-                                    </form>
-                                </field>
-                            </page>
-                        </notebook>
-                    </sheet>
-                </form>
-            </field>
+        <!--
+        <record model="ir.actions.act_window" id="action_cf_template">
+            <field name="name">CFPrint Template Import</field>
+            <field name="res_model">cf.template</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+            <field name="context">{}</field>
+            <field name="view_id" ref="cf_template_view"/>
+            <field name="target">new</field>
         </record>
+        -->
 
         <!-- 模板管理Action -->
         <record id="action_cf_template_category" model="ir.actions.act_window">

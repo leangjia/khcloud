@@ -1,4 +1,4 @@
-﻿一、
+一、
 使用康虎云报表与odoo集成，生成json时，有时候会遇到字符串有换行
 或特殊字符导致生成的json格式错误时，可以按下面的方法解决：
 <!-- 替换掉字符串中的特殊字符 -->
@@ -22,6 +22,6 @@ var _data = {"template": "base64:<t t-esc="user.env['cf.template'].search([('tem
 
 
 
-康虎云报表官网地址： http://www.khcloud.net
+康虎云报表官网地址： http://www.cfsoft.cf
 
 

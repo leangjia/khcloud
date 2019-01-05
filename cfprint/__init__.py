@@ -1,2 +1,2 @@
 # -*- coding: utf-8 -*-
-from . import models, ir, controllers
+from . import ir, models, controllers
