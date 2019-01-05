@@ -1,0 +1,36 @@
+
+
+本模块依赖 pycrypto 模块，Ubuntu/Docker中按下面方法安装，其他OS请自行搜索解决
+------------------
+
+以root用户进入容器！！！！
+docker exec -ti -u root <容器名> /bin/bash
+************************************
+
+
+安装pycrypto:
+
+1、先卸载旧模块
+pip3 uninstall crypto
+pip3 uninstall pycrypto
+
+2、安装编译依赖库
+apt-get upate
+apt-get install build-essential libssl-dev libffi-dev python3-dev
+
+3、升级setuptools
+pip3 install -U setuptools
+
+4、安装pycrypto
+官方源，无加速：
+pip3 install pycrypto
+
+或者选择以下加速：
+阿里云加速（阿里云服务器优选）：
+pip3 install pycrypto -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com packagename
+
+清华大学加速（通用）：
+pip3 install pycrypto -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+豆瓣加速（通用）
+pip3 install pycrypto -i http://pypi.douban.com/simple --trusted-host pypi.douban.com packagename
